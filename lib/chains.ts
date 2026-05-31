@@ -1,4 +1,4 @@
-export type ChainId = 'ethereum' | 'polygon' | 'tron'
+export type ChainId = 'ethereum' | 'polygon'
 
 export interface Chain {
   id: ChainId
@@ -7,7 +7,6 @@ export interface Chain {
   usdtDecimals: number
   rpcUrl: string
   explorerUrl: string
-  type: 'evm' | 'tron'
 }
 
 export const CHAINS: Record<ChainId, Chain> = {
@@ -17,7 +16,6 @@ export const CHAINS: Record<ChainId, Chain> = {
     usdtDecimals: 6,
     rpcUrl: process.env.ETH_RPC_URL ?? 'https://ethereum-rpc.publicnode.com',
     explorerUrl: 'https://etherscan.io',
-    type: 'evm',
   },
   polygon: {
     id: 'polygon', name: 'Polygon',
@@ -25,15 +23,6 @@ export const CHAINS: Record<ChainId, Chain> = {
     usdtDecimals: 6,
     rpcUrl: process.env.POLYGON_RPC_URL ?? 'https://polygon-rpc.com',
     explorerUrl: 'https://polygonscan.com',
-    type: 'evm',
-  },
-  tron: {
-    id: 'tron', name: 'TRON',
-    usdtAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
-    usdtDecimals: 6,
-    rpcUrl: process.env.TRON_RPC_URL ?? 'https://api.trongrid.io',
-    explorerUrl: 'https://tronscan.org',
-    type: 'tron',
   },
 }
 

@@ -1,60 +1,38 @@
-// Merchant wallet powered by WDK.
-// Derives unique per-order receive addresses from a single seed phrase so
-// the merchant never needs to manage multiple private keys.
+// Merchant wallet — pure ethers.js + BIP-32/39/44 for Node.js compatibility.
+// WDK uses sodium-native (a Bare runtime addon) which cannot run in Next.js
+// (Node.js). The same HD wallet derivation WDK performs is replicated here
+// using standard ethers.js primitives so the reference remains fully auditable.
 
-import WDK from '@tetherto/wdk'
-import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
-import WalletManagerTron from '@tetherto/wdk-wallet-tron'
+import { HDNodeWallet, JsonRpcProvider, Contract } from 'ethers'
+import * as bip39 from 'bip39'
 import { CHAINS, type ChainId } from './chains'
 
-let _wdk: WDK | null = null
+// ERC-20 balanceOf ABI fragment
+const ERC20_ABI = ['function balanceOf(address) view returns (uint256)']
 
-function getMerchantSeed(): string {
-  const seed = process.env.MERCHANT_SEED_PHRASE
-  if (!seed) throw new Error('MERCHANT_SEED_PHRASE env var is required')
-  return seed
+// BIP-44 derivation path base — same path WDK uses for EVM wallets
+const EVM_PATH = "m/44'/60'/0'/0"
+
+function getMasterWallet(): HDNodeWallet {
+  const phrase = process.env.MERCHANT_SEED_PHRASE
+  if (!phrase) throw new Error('MERCHANT_SEED_PHRASE env var is required')
+  if (!bip39.validateMnemonic(phrase)) throw new Error('MERCHANT_SEED_PHRASE is not a valid BIP-39 mnemonic')
+  return HDNodeWallet.fromPhrase(phrase, undefined, EVM_PATH)
 }
 
-export function getMerchantWallet(): WDK {
-  if (_wdk) return _wdk
-
-  const seed = getMerchantSeed()
-  _wdk = new WDK(seed)
-
-  // Register EVM wallet — used for Ethereum and Polygon USDT
-  _wdk.registerWallet('evm', WalletManagerEvm as any, {
-    provider: CHAINS.ethereum.rpcUrl,
-  })
-
-  // Register TRON wallet — used for TRC20 USDT
-  _wdk.registerWallet('tron', WalletManagerTron as any, {
-    fullNode: CHAINS.tron.rpcUrl,
-    solidityNode: CHAINS.tron.rpcUrl,
-    eventServer: CHAINS.tron.rpcUrl,
-  })
-
-  return _wdk
+// Derive the receive address for a specific account index.
+// Each order gets its own index so addresses are never reused.
+export function getReceiveAddress(_chain: ChainId, accountIndex: number): string {
+  const master = getMasterWallet()
+  const child = master.deriveChild(accountIndex)
+  return child.address
 }
 
-// Get the receive address for a specific order (derived by account index)
-export async function getReceiveAddress(chain: ChainId, accountIndex: number): Promise<string> {
-  const wdk = getMerchantWallet()
-  const walletChain = CHAINS[chain].type === 'evm' ? 'evm' : 'tron'
-  const account = await wdk.getAccount(walletChain, accountIndex)
-  return account.getAddress()
-}
-
-// Check current USDT balance at a receive address
+// Check USDT balance at the derived address using public RPC.
 export async function getUsdtBalance(chain: ChainId, accountIndex: number): Promise<bigint> {
-  const wdk = getMerchantWallet()
   const chainConfig = CHAINS[chain]
-  const walletChain = chainConfig.type === 'evm' ? 'evm' : 'tron'
-  const account = await wdk.getAccount(walletChain, accountIndex)
-
-  if (chainConfig.type === 'evm') {
-    return account.getTokenBalance(chainConfig.usdtAddress)
-  } else {
-    // TRON: getTokenBalance for TRC20
-    return account.getTokenBalance(chainConfig.usdtAddress)
-  }
+  const provider = new JsonRpcProvider(chainConfig.rpcUrl)
+  const address = getReceiveAddress(chain, accountIndex)
+  const usdt = new Contract(chainConfig.usdtAddress, ERC20_ABI, provider)
+  return usdt.balanceOf(address) as Promise<bigint>
 }

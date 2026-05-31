@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest } from 'next/server'
 import { getOrder, markOrderPaid } from '@/lib/db'
 import { getUsdtBalance } from '@/lib/merchant-wallet'

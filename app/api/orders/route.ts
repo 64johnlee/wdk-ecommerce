@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { PRODUCTS } from '@/lib/products'
@@ -15,7 +17,7 @@ export async function POST(req: NextRequest) {
     if (!CHAINS[chain]) return NextResponse.json({ error: 'Unsupported chain' }, { status: 400 })
 
     const accountIndex = getNextAccountIndex(chain)
-    const receiveAddress = await getReceiveAddress(chain, accountIndex)
+    const receiveAddress = getReceiveAddress(chain, accountIndex)
     const amountUsdt = toUsdtBase(product.priceUsd, CHAINS[chain].usdtDecimals)
 
     const order = {

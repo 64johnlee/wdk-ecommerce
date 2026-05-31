@@ -7,7 +7,7 @@ import { PRODUCTS } from '@/lib/products'
 const CHAINS = [
   { id: 'ethereum', name: 'Ethereum (USDT ERC-20)' },
   { id: 'polygon',  name: 'Polygon (USDT)' },
-  { id: 'tron',     name: 'TRON (USDT TRC-20)' },
+  
 ]
 
 export default function StorePage() {
